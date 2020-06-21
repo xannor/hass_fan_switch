@@ -1,0 +1,9 @@
+{
+    "domain": "fan_switch",
+    "name": "Fan Switch",
+    "documentation": "https://github.com/xannor/hass_fan_switch",
+    "issue_tracker": "https://github.com/xannor/hass_fan_switch/issues",
+    "dependencies": [],
+    "codeowners": ["@xannor"],
+    "requirements": []
+  }
