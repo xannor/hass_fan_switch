@@ -6,7 +6,7 @@ from typing import Callable, Optional, Sequence, cast
 import voluptuous as vol
 
 from homeassistant.components import switch
-from homeassistant.components.fan import PLATFORM_SCHEMA, FanEntity
+from homeassistant.components.fan import PLATFORM_SCHEMA, FanEntity, SPEED_OFF
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     CONF_ENTITY_ID,
@@ -79,12 +79,16 @@ class FanSwitch(FanEntity):
         """No polling needed for a fan switch."""
         return False
 
-    async def async_turn_on(self, **kwargs):
+    async def async_turn_on(self, speed: Optional[str] = None, **kwargs):
         """Forward the turn_on command to the switch in this fan switch."""
         data = {ATTR_ENTITY_ID: self._switch_entity_id}
-        await self.hass.services.async_call(
-            switch.DOMAIN, switch.SERVICE_TURN_ON, data, blocking=True
-        )
+
+        if speed is SPEED_OFF:
+            await self.async_turn_off()
+        else:        
+            await self.hass.services.async_call(
+                switch.DOMAIN, switch.SERVICE_TURN_ON, data, blocking=True
+            )
 
     async def async_turn_off(self, **kwargs):
         """Forward the turn_off command to the switch in this fan switch."""
