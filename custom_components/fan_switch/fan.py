@@ -6,7 +6,8 @@ from typing import Callable, Optional, Sequence, cast
 import voluptuous as vol
 
 from homeassistant.components import switch
-from homeassistant.components.fan import PLATFORM_SCHEMA, FanEntity
+from homeassistant.components import light
+from homeassistant.components.fan import PLATFORM_SCHEMA, FanEntity, SPEED_OFF
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     CONF_ENTITY_ID,
@@ -26,6 +27,11 @@ from homeassistant.helpers.typing import (
 
 # mypy: allow-untyped-calls, allow-untyped-defs, no-check-untyped-defs
 
+SERVICES = {
+    switch.DOMAIN: (switch.SERVICE_TURN_ON, switch.SERVICE_TURN_OFF),
+    light.DOMAIN: (light.SERVICE_TURN_ON, light.SERVICE_TURN_OFF)
+}
+
 _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_NAME = "Fan Switch"
@@ -33,7 +39,7 @@ DEFAULT_NAME = "Fan Switch"
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-        vol.Required(CONF_ENTITY_ID): cv.entity_domain(switch.DOMAIN),
+        vol.Required(CONF_ENTITY_ID): cv.string,
     }
 )
 
@@ -54,7 +60,11 @@ class FanSwitch(FanEntity):
     def __init__(self, name: str, switch_entity_id: str) -> None:
         """Initialize Fan Switch."""
         self._name = name
-        self._switch_entity_id = switch_entity_id
+        self._entity_id = switch_entity_id
+        self._domain = switch_entity_id.split('.', 2)[0]
+        self._services = SERVICES[self._domain]
+        _LOGGER.debug("Setting up %s as %s for %s", self._entity_id, self._name, self._domain)
+
         self._is_on = False
         self._available = False
         self._async_unsub_state_changed: Optional[CALLBACK_TYPE] = None
@@ -79,23 +89,28 @@ class FanSwitch(FanEntity):
         """No polling needed for a fan switch."""
         return False
 
-    async def async_turn_on(self, **kwargs):
+    async def async_turn_on(self, speed: Optional[str] = None, **kwargs):
         """Forward the turn_on command to the switch in this fan switch."""
-        data = {ATTR_ENTITY_ID: self._switch_entity_id}
-        await self.hass.services.async_call(
-            switch.DOMAIN, switch.SERVICE_TURN_ON, data, blocking=True
-        )
+        data = {ATTR_ENTITY_ID: self._entity_id}
+
+        # TODO : map fan speeds to level for light switches
+        if speed is SPEED_OFF:
+            await self.async_turn_off()
+        else:        
+            await self.hass.services.async_call(
+                self._domain, self._services[0], data, blocking=True
+            )
 
     async def async_turn_off(self, **kwargs):
         """Forward the turn_off command to the switch in this fan switch."""
-        data = {ATTR_ENTITY_ID: self._switch_entity_id}
+        data = {ATTR_ENTITY_ID: self._entity_id}
         await self.hass.services.async_call(
-            switch.DOMAIN, switch.SERVICE_TURN_OFF, data, blocking=True
+            self._domain, self._services[1], data, blocking=True
         )
 
     async def async_update(self):
         """Query the switch in this fan switch and determine the state."""
-        switch_state = self.hass.states.get(self._switch_entity_id)
+        switch_state = self.hass.states.get(self._entity_id)
 
         if switch_state is None:
             self._available = False
@@ -116,7 +131,7 @@ class FanSwitch(FanEntity):
 
         assert self.hass is not None
         self._async_unsub_state_changed = async_track_state_change(
-            self.hass, self._switch_entity_id, async_state_changed_listener
+            self.hass, self._entity_id, async_state_changed_listener
         )
 
     async def async_will_remove_from_hass(self):
