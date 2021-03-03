@@ -3,6 +3,7 @@
     "name": "Fan Switch",
     "documentation": "https://github.com/xannor/hass_fan_switch",
     "issue_tracker": "https://github.com/xannor/hass_fan_switch/issues",
+    "version": "0.3.1",
     "dependencies": [],
     "codeowners": ["@xannor"],
     "requirements": []
