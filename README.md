@@ -1,3 +1,5 @@
+This integration has been archived with the implementation of the switch as integration in core.
+
 # hass_fan_switch
 Fan Swithc platform for Home Assistant
 
